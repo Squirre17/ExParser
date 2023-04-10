@@ -8,9 +8,9 @@ use std::fmt;
 +--------------------------+
 |     Program Header Table | : Phdr
 +--------------------------+
-|    Section Header Table  | : Shdr
+|      Sections            |
 +--------------------------+
-|         Sections         |
+|    Section Header Table  | : Shdr
 +--------------------------+
 
 */
@@ -120,13 +120,13 @@ pub struct EIdent {
 #[repr(C)]
 pub struct Elf64Phdr
 {
-        p_type   : Elf64Word,			/* Segment type */
+    pub p_type   : Elf64Word,			/* Segment type */
         p_flags  : Elf64Word,			/* Segment flags */
     pub p_offset : Elf64Off,		    /* Segment file offset */
     pub p_vaddr  : Elf64Addr,		    /* Segment virtual address */
   	pub p_paddr  : Elf64Addr,		    /* Segment physical address */
-  	    p_filesz : Elf64Xword,		    /* Segment size in file */
-  	    p_memsz  : Elf64Xword,		    /* Segment size in memory */
+    pub p_filesz : Elf64Xword,		    /* Segment size in file */
+    pub p_memsz  : Elf64Xword,		    /* Segment size in memory */
   	    p_align  : Elf64Xword,		    /* Segment alignment */
 }
 
