@@ -16,11 +16,12 @@ use std::fmt;
 */
 const EI_NIDENT : usize = 0x10;// TEMP:
 
-type Elf64Half  = u16;
-type Elf64Word  = u32;
-type Elf64Addr  = u64;
-type Elf64Off   = u64;
-type Elf64Xword = u64;
+type Elf64Half    = u16;
+type Elf64Word    = u32;
+type Elf64Addr    = u64;
+type Elf64Off     = u64;
+type Elf64Xword   = u64;
+type Elf64Section = u16;
 
 /* Elf Header */
 #[repr(C)]   /* for forbid rearrange */
@@ -233,3 +234,14 @@ impl fmt::Debug for Elf64Shdr {
         Ok(())
     }
 }
+
+struct Elf64Sym
+{
+    st_name  : Elf64Word,		/* Symbol name (string tbl index) */
+    st_info  : u8,      		/* Symbol type and binding */
+    st_other : u8,		        /* Symbol visibility */
+    st_shndx : Elf64Section,	/* Section index */
+    st_value : Elf64Addr,		/* Symbol value */
+    st_size  : Elf64Xword,		/* Symbol size */
+}
+

@@ -229,6 +229,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
     fn test_print_shdr() {
         let parser = Parser::new("/bin/ls");
         parser.show_shdrs();
