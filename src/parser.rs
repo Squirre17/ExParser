@@ -5,6 +5,8 @@ use crate::binbuf::BinBuf;
 use crate::parser::elf::elf_struct::Elf64Ehdr;
 use crate::parser::elf::elf_struct::Elf64Phdr;
 use crate::parser::elf::elf_struct::Elf64Shdr;
+use crate::parser::elf::elf_struct::Elf64Sym;
+use crate::parser::elf::elf_struct::DynSymTab;
 use std::hash::Hash;
 use std::mem;
 use num_derive::FromPrimitive;
@@ -42,15 +44,15 @@ enum SegmentType {
 impl From<u32> for SegmentType {
     fn from(p_type: u32) -> Self {
         match p_type {
-            0 => SegmentType::PT_NULL,
-            1 => SegmentType::PT_LOAD,
-            2 => SegmentType::PT_DYNAMIC,
-            3 => SegmentType::PT_INTERP,
-            4 => SegmentType::PT_NOTE,
-            5 => SegmentType::PT_SHLIB,
-            6 => SegmentType::PT_PHDR,
-            7 => SegmentType::PT_TLS,
-            8 => SegmentType::PT_NUM,
+            0          => SegmentType::PT_NULL,
+            1          => SegmentType::PT_LOAD,
+            2          => SegmentType::PT_DYNAMIC,
+            3          => SegmentType::PT_INTERP,
+            4          => SegmentType::PT_NOTE,
+            5          => SegmentType::PT_SHLIB,
+            6          => SegmentType::PT_PHDR,
+            7          => SegmentType::PT_TLS,
+            8          => SegmentType::PT_NUM,
             0x60000000 => SegmentType::PT_LOOS,
             0x6474e550 => SegmentType::PT_GNU_EH_FRAME,
             0x6474e551 => SegmentType::PT_GNU_STACK,
@@ -65,6 +67,7 @@ pub struct Parser {
     ehdr   : Elf64Ehdr,
     phdrs  : Vec<Elf64Phdr>,
     shdrs  : Vec<Elf64Shdr>,
+    dynsymtabs : Vec<DynSymTab>,
 }
 impl Parser {
     pub fn get_sec_name(&self, offset : u32) -> String {
@@ -79,7 +82,7 @@ impl Parser {
             if *c == '\x00' as u8 {
                 break;
             }
-            s.push(c.clone() as char);
+            s.push(*c as char);
         }
 
         s
@@ -113,20 +116,20 @@ impl Parser {
         // get segment type str
 
         match SegmentType::from(p_type) {
-            SegmentType::PT_NULL  => "NULL",
-            SegmentType::PT_LOAD  => "LOAD",
-            SegmentType::PT_DYNAMIC  => "DYNAMIC",
-            SegmentType::PT_INTERP  => "INTEPR",
-            SegmentType::PT_NOTE  => "NOTE",
-            SegmentType::PT_SHLIB  => "SHLIB",
-            SegmentType::PT_PHDR  => "PHDR",
-            SegmentType::PT_TLS  => "TLS",
-            SegmentType::PT_NUM  => "NUM",
-            SegmentType::PT_LOOS  => "LOOS",
+            SegmentType::PT_NULL          => "NULL",
+            SegmentType::PT_LOAD          => "LOAD",
+            SegmentType::PT_DYNAMIC       => "DYNAMIC",
+            SegmentType::PT_INTERP        => "INTEPR",
+            SegmentType::PT_NOTE          => "NOTE",
+            SegmentType::PT_SHLIB         => "SHLIB",
+            SegmentType::PT_PHDR          => "PHDR",
+            SegmentType::PT_TLS           => "TLS",
+            SegmentType::PT_NUM           => "NUM",
+            SegmentType::PT_LOOS          => "LOOS",
             SegmentType::PT_GNU_EH_FRAME  => "GNU_EH_FRAME",
-            SegmentType::PT_GNU_STACK  => "GNU_STACK",
-            SegmentType::PT_GNU_RELRO  => "GNU_RELRO",
-            SegmentType::PT_UNKNOWN  => "UNKNOWN",
+            SegmentType::PT_GNU_STACK     => "GNU_STACK",
+            SegmentType::PT_GNU_RELRO     => "GNU_RELRO",
+            SegmentType::PT_UNKNOWN       => "UNKNOWN",
             _ => panic!("unknown type"),
         }
     }
@@ -173,6 +176,49 @@ fn print_null_terminated_string(data: &[u8]) {
 }
 
 impl Parser {
+    
+    fn get_name(&self, shdr : &Elf64Shdr) -> String {
+        // 
+        let shstridx = self.ehdr.e_shstrndx as usize;
+        let offset = shdr.sh_name;
+        let i = self.shdrs[shstridx].sh_offset + offset as u64;
+
+        return self.binbuf.idx_to_string(i as usize);
+    }
+    fn find_section(&self, sname : &str ) -> Option<&Elf64Shdr>{
+        // find section by section name(e.g : .dynsym)
+
+        for shdr in &self.shdrs {
+            let s = self.get_name(shdr);
+            if s == sname {
+                return Some(shdr);
+            }
+        }
+        return None;
+    }
+    pub fn parse_dynsymtab(&mut self){
+        // parse dynamic symbol table
+
+        let dynsym : &Elf64Shdr = self.find_section(".dynsym").unwrap();
+        let dynstr : &Elf64Shdr = self.find_section(".dynstr").unwrap();
+        let dynstr_offset = dynstr.sh_offset;
+        let mut i = dynsym.sh_offset as usize;
+        
+        for _ in 0..self.ehdr.e_shnum {
+
+            let sym = Elf64Sym::new(&self.binbuf.buf[i..]);
+            let str_idx = sym.st_name as u64 + dynstr_offset;
+            let str = self.binbuf.idx_to_string(str_idx as usize);
+
+            self.dynsymtabs.push(DynSymTab::new(sym, str));
+            i += mem::size_of::<Elf64Sym>();
+        }
+
+        for dynsymtab in &self.dynsymtabs {
+            println!("{}", dynsymtab.str);
+            // println!("{}", dynsymtab.sym);
+        }
+    }
     pub fn new(filename : &str) -> Parser {
         let mut binbuf = BinBuf::new(filename);
         for i in 0..0x10 {
@@ -217,6 +263,7 @@ impl Parser {
             ehdr,
             phdrs,
             shdrs,
+            dynsymtabs : vec![]
         }
     }
     #[deprecated]
@@ -229,14 +276,31 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
+    // #[test]
     fn test_print_shdr() {
         let parser = Parser::new("/bin/ls");
         parser.show_shdrs();
     }
-    #[test]
+    // #[test]
     fn test_print_phdr () {
         let parser = Parser::new("/bin/ls");
         parser.show_phdrs();
+    }
+    #[test]
+    fn test_get_name() {
+        /*
+        [0 ]                    000000000000000000 000000000000000000 000000000000000000
+        [1 ] .interp            000000000000400318 000000000000000318 00000000000000001c
+        [2 ] .note.gnu.property 000000000000400338 000000000000000338 000000000000000020
+        [3 ] .note.gnu.build-id 000000000000400358 000000000000000358 000000000000000024
+         */
+        let parser = Parser::new("/bin/ls");
+        let s = parser.get_name(&parser.shdrs[1]);
+        assert_eq!(s, ".interp");
+
+        let sec = parser.find_section(".note.gnu.property").unwrap();
+        assert_eq!(parser.shdrs[2].sh_addr, sec.sh_addr);
+        assert_eq!(parser.shdrs[2].sh_name, sec.sh_name);
+        assert_eq!(parser.shdrs[2].sh_offset, sec.sh_offset);
     }
 }

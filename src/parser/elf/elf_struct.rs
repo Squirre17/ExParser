@@ -235,13 +235,63 @@ impl fmt::Debug for Elf64Shdr {
     }
 }
 
-struct Elf64Sym
+#[repr(C)]
+pub struct Elf64Sym
 {
-    st_name  : Elf64Word,		/* Symbol name (string tbl index) */
-    st_info  : u8,      		/* Symbol type and binding */
-    st_other : u8,		        /* Symbol visibility */
-    st_shndx : Elf64Section,	/* Section index */
-    st_value : Elf64Addr,		/* Symbol value */
-    st_size  : Elf64Xword,		/* Symbol size */
+    pub st_name  : Elf64Word,		/* Symbol name (string tbl index) */
+        st_info  : u8,      		/* Symbol type and binding */
+        st_other : u8,		        /* Symbol visibility */
+        st_shndx : Elf64Section,	/* Section index */
+        st_value : Elf64Addr,		/* Symbol value */
+        st_size  : Elf64Xword,		/* Symbol size */
 }
 
+impl Elf64Sym {
+    pub fn new(buf : &[u8]) -> Self {
+
+        let mut header = Elf64Sym {
+            st_name  : 0,
+            st_info  : 0,
+            st_other : 0,
+            st_shndx : 0,
+            st_value : 0,
+            st_size  : 0,
+        };
+
+        let sz = mem::size_of::<Elf64Sym>();
+        assert!(buf.len() >= sz);
+
+        let (l, _) = buf.split_at(sz);
+        unsafe {
+            // &mut header as *mut _ make header as rawptr
+            ptr::copy_nonoverlapping(l.as_ptr(), &mut header as *mut _ as *mut u8, l.len());
+        }
+
+        header
+    }
+}
+impl fmt::Display for Elf64Sym {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        write!(f, "Dynsym\n")?;
+        write!(f, "st_name: {:#x},\n", self.st_name)?;
+        write!(f, "st_info: {:#x},\n", self.st_info)?;
+        write!(f, "st_other: {:#x},\n", self.st_other)?;
+        write!(f, "st_shndx: {:#x},\n", self.st_shndx)?;
+        write!(f, "st_value: {:#x},\n", self.st_value)?;
+        write!(f, "st_size: {:#x},\n", self.st_size)?;
+
+        Ok(())
+    }
+}
+
+pub struct DynSymTab {
+    // wrapper of dynsym and dynstr
+    pub sym : Elf64Sym,
+    pub str : String,
+}
+impl DynSymTab {
+    pub fn new(sym : Elf64Sym, str : String) -> Self {
+        DynSymTab { sym, str }
+    }
+}

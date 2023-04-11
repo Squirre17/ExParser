@@ -32,4 +32,16 @@ impl BinBuf {
             filename
         }
     } 
+    pub fn idx_to_string(&self, idx : usize) -> String {
+        // find a Null-terminated string at specific index
+        let mut s = String::new();
+        
+        for c in &self.buf[idx..] {
+            if *c == 0 {
+                break;
+            }
+            s.push(*c as char);
+        }
+        s
+    }
 }
