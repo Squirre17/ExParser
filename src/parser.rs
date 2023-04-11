@@ -70,7 +70,7 @@ pub struct Parser {
     dynsymtabs : Vec<DynSymTab>,
 }
 impl Parser {
-    pub fn get_sec_name(&self, offset : u32) -> String {
+    fn get_sec_name(&self, offset : u32) -> String {
         // get section name by sh_name in shdr
         let shstrtab = &self.shdrs[self.ehdr.e_shstrndx as usize];
 
@@ -87,7 +87,7 @@ impl Parser {
 
         s
     }
-    pub fn show_shdrs(&self) {
+    pub fn show_shdrs(&self) -> &Self {
 
         // TODO: clearify sh_addr
         
@@ -111,6 +111,7 @@ impl Parser {
             println!("{}", fields.join(" "));
 
         }
+        self
     }
     fn get_seg_type_str(&self, p_type: u32) -> &'static str {
         // get segment type str
@@ -133,7 +134,7 @@ impl Parser {
             _ => panic!("unknown type"),
         }
     }
-    pub fn show_phdrs(&self) {
+    pub fn show_phdrs(&self) -> &Self {
 
         print!("{:>18}", "Type".red());
         print!("{:>19}", "Offset".blue());
@@ -153,6 +154,7 @@ impl Parser {
 
             println!("{}", fields.join(" "));
         }
+        self
     }
 }
 /*
@@ -161,24 +163,11 @@ impl Parser {
 遍历ELF文件中所有的SHDR，找到与当前PT_LOAD段相关的SHDR。具体判断方法是：如果一个SHDR的sh_addr字段值在当前PT_LOAD段的虚拟地址范围内，则认为该SHDR与当前PT_LOAD段相关。
 找到与当前PT_LOAD段相关的SHDR后，就可以获取该段在文件中的位置和大小等信息，从而可以将该段从文件中读取出来或者映射到内存中去。
  */
-#[deprecated]
-fn print_null_terminated_string(data: &[u8]) {
-    // 从头开始迭代字节序列
-    for &byte in data.iter() {
-        // 如果遇到了\x00字节，则停止迭代
-        if byte == 0 {
-            break;
-        }
-        // 将字节转换为对应的字符并打印
-        print!("{}", byte as char);
-    }
-    println!(); // 打印一个换行符以便于显示下一行输出
-}
 
 impl Parser {
     
     fn get_name(&self, shdr : &Elf64Shdr) -> String {
-        // 
+        // get name of given shdr
         let shstridx = self.ehdr.e_shstrndx as usize;
         let offset = shdr.sh_name;
         let i = self.shdrs[shstridx].sh_offset + offset as u64;
@@ -196,67 +185,39 @@ impl Parser {
         }
         return None;
     }
-    pub fn parse_dynsymtab(&mut self){
-        // parse dynamic symbol table
 
-        let dynsym : &Elf64Shdr = self.find_section(".dynsym").unwrap();
-        let dynstr : &Elf64Shdr = self.find_section(".dynstr").unwrap();
-        let dynstr_offset = dynstr.sh_offset;
-        let mut i = dynsym.sh_offset as usize;
-        
-        for _ in 0..self.ehdr.e_shnum {
-
-            let sym = Elf64Sym::new(&self.binbuf.buf[i..]);
-            let str_idx = sym.st_name as u64 + dynstr_offset;
-            let str = self.binbuf.idx_to_string(str_idx as usize);
-
-            self.dynsymtabs.push(DynSymTab::new(sym, str));
-            i += mem::size_of::<Elf64Sym>();
-        }
-
-        for dynsymtab in &self.dynsymtabs {
-            println!("{}", dynsymtab.str);
-            // println!("{}", dynsymtab.sym);
-        }
-    }
-    pub fn new(filename : &str) -> Parser {
-        let mut binbuf = BinBuf::new(filename);
+    pub fn show_magic(&self) -> &Self {
         for i in 0..0x10 {
-            print!("{:02x} ", binbuf.buf[i]);
+            print!("{:02x} ", self.binbuf.buf[i]);
         }
         println!("");
-        // skip magic field(this alreadly in Elf64Ehdr)
-        // binbuf.cur += 0x10;
-        
-        let ehdr = Elf64Ehdr::new(binbuf.buf[binbuf.cur..].as_ref());
-        binbuf.cur = ehdr.e_phoff as usize;
+        self
+    }
 
+    pub fn new(filename : &str) -> Parser {
+
+        let binbuf = BinBuf::new(filename);
+        
+        let idx = 0x0;
+        let ehdr = Elf64Ehdr::new(binbuf.buf[idx..].as_ref());
+
+        let mut idx = ehdr.e_phoff as usize;
         let mut phdrs = vec![];
+
         for _ in 0..ehdr.e_phnum {
-            let phdr = Elf64Phdr::new(binbuf.buf[binbuf.cur..].as_ref());
-            binbuf.cur += mem::size_of::<Elf64Phdr>();
+            let phdr = Elf64Phdr::new(binbuf.buf[idx..].as_ref());
+            idx += mem::size_of::<Elf64Phdr>();
             phdrs.push(phdr);
         }
 
-        binbuf.cur = ehdr.e_shoff as usize;
-
-        println!("------------------------");
+        let mut idx = ehdr.e_shoff as usize;
         let mut shdrs = vec![];
-        binbuf.cur = ehdr.e_shoff as usize;
 
         for _ in 0..ehdr.e_shnum {
-            let shdr = Elf64Shdr::new(binbuf.buf[binbuf.cur..].as_ref());
-            binbuf.cur += mem::size_of::<Elf64Shdr>();
+            let shdr = Elf64Shdr::new(binbuf.buf[idx..].as_ref());
+            idx += mem::size_of::<Elf64Shdr>();
             shdrs.push(shdr);
         }
-        // let symtab_shdr = crate::parser::elf::elf_struct::find_symtab_in_shdrs(&shdrs);
-        // dbg!(&symtab_shdr);
-        let shstrtab = &shdrs[ehdr.e_shstrndx as usize];
-        dbg!(shstrtab);
-        binbuf.cur = shstrtab.sh_offset as usize;
-        binbuf.cur += shstrtab.sh_name as usize;
-
-        print_null_terminated_string(&binbuf.buf[binbuf.cur..]);
 
         Parser {  
             binbuf,
@@ -265,11 +226,6 @@ impl Parser {
             shdrs,
             dynsymtabs : vec![]
         }
-    }
-    #[deprecated]
-    pub fn read_e_ident(&mut self) -> &[u8] {
-        self.binbuf.cur += 0x10;
-        return self.binbuf.buf[0..0x10].as_ref();
     }
 }
 

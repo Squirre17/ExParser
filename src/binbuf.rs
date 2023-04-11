@@ -3,7 +3,7 @@ use std::fs::File;
 
 pub struct BinBuf {
     pub buf : Vec<u8>,
-    pub cur : usize,
+    // pub cur : usize,
     filename : String,
 }
 
@@ -28,7 +28,6 @@ impl BinBuf {
 
         BinBuf { 
             buf,
-            cur : 0,
             filename
         }
     } 
