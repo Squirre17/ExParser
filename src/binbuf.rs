@@ -2,8 +2,8 @@ use std::io::prelude::*;
 use std::fs::File;
 
 pub struct BinBuf {
-    pub buf : Vec<u8>,
-    // pub cur : usize,
+    pub buf  : Vec<u8>,
+    pub size : u32,
     filename : String,
 }
 
@@ -27,12 +27,13 @@ impl BinBuf {
         }
 
         BinBuf { 
+            size : buf.len() as u32,
             buf,
             filename
         }
     } 
     pub fn idx_to_string(&self, idx : usize) -> String {
-        // find a Null-terminated string at specific index
+        // find a Null-terminated string at specific index in binbuf
         let mut s = String::new();
         
         for c in &self.buf[idx..] {
