@@ -119,6 +119,7 @@ pub struct EIdent {
   
 /* Elf Program Header */
 #[repr(C)]
+#[derive(Debug)]
 pub struct Elf64Phdr
 {
     pub p_type   : Elf64Word,			/* Segment type */

@@ -76,14 +76,14 @@ mod segtype {
 }
 pub struct Segments {
     // manage all segments
-    segs  : Vec<Segment>,
-    pos   : usize,
+    pub segs  : Vec<Segment>,
+    pub pos   : usize,
 }
-
+#[derive(Debug)]
 pub struct Segment {
     // just a wrap for Elf64Phdr
     pub phdr : Elf64Phdr,
-    pub name : &'static str,
+    pub name : String,
 }
 
 impl Segments {
@@ -93,7 +93,7 @@ impl Segments {
         
         for phdr in phdrs {
             segs.push(Segment{
-                name : segtype::get_seg_type_str(phdr.p_type),
+                name : segtype::get_seg_type_str(phdr.p_type).to_string(),
                 phdr,
             });
         }

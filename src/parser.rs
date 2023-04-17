@@ -44,8 +44,29 @@ impl Parser {
 
     pub fn show_layout(&self) -> &Self {
 
-        for seg in &self.segments {
-            println!("{} {}-{}", seg.name, seg.phdr.p_offset, seg.phdr.p_offset + seg.phdr.p_filesz);
+        for seg in &self.segments.segs {
+
+            let seg_start = seg.phdr.p_offset;
+            let seg_end = seg.phdr.p_offset + seg.phdr.p_filesz;
+            
+            let start = format!("0x{:x}", seg_start);
+            let end   = format!("0x{:x}", seg_end);
+
+            println!("{:<022} {}", seg.name.red(), start.yellow());
+            
+            for sec in &self.sections.secs {
+                // dbg!(&sec);
+
+                let sec_start = sec.shdr.sh_offset;
+                let sec_end = sec.shdr.sh_offset + sec.shdr.sh_size;
+
+                // TODO: maybe unsound
+                if sec_start >= seg_start && sec_end <= seg_end {
+                    println!("\t{:<20} 0x{:x}-0x{:x}", sec.name.blue(), sec_start, sec_end );
+                }
+            }
+            println!("{:<022} {}", "END".to_string().red(), end.yellow() );
+            println!("-----------------------------------------------");
         }
 
         self
@@ -122,6 +143,9 @@ impl Parser {
             sections ,
             dynsymtabs : vec![]
         }
+    }
+    pub fn writeback(&self, path : &String) {
+        unimplemented!()
     }
 }
 

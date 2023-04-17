@@ -11,6 +11,7 @@ pub struct Sections {
     pos : usize
 }
 
+#[derive(Debug)]
 pub struct Section {
     pub shdr : Elf64Shdr,
     pub name : String
@@ -118,10 +119,10 @@ impl std::ops::Index<usize> for Sections {
         &self.secs[index]
     }
 }
-
+// TODO: problem
 impl<'a> Iterator for &'a Sections {
     type Item = &'a Section;
-
+    
     fn next(&mut self) -> Option<Self::Item> {
         self.secs.iter().next()
     }
