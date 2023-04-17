@@ -160,7 +160,7 @@ impl Elf64Phdr {
 
 /* Elf Section Header */
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Elf64Shdr
 {
     pub sh_name      : Elf64Word,		/* Section name (string tbl index) */

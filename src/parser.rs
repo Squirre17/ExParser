@@ -7,155 +7,22 @@ use crate::parser::elf::elf_struct::Elf64Phdr;
 use crate::parser::elf::elf_struct::Elf64Shdr;
 use crate::parser::elf::elf_struct::Elf64Sym;
 use crate::parser::elf::elf_struct::DynSymTab;
-use std::hash::Hash;
+use crate::parser::elf::segments::Segments;
+use crate::parser::elf::segments::Segment;
+use crate::parser::elf::sections::Sections;
+use crate::parser::elf::sections::Section;
 use std::mem;
-use num_derive::FromPrimitive;
-use std::convert::TryFrom;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-
-/* Legal values for p_type (segment type).  */
-#[allow(non_camel_case_types)]
-#[derive(FromPrimitive, Debug)]
-enum SegmentType {
-    PT_NULL          = 0,           // Program header table entry unused
-    PT_LOAD          = 1,           // Loadable program segment
-    PT_DYNAMIC       = 2,           // Dynamic linking information
-    PT_INTERP        = 3,           // Program interpreter
-    PT_NOTE          = 4,           // Auxiliary information
-    PT_SHLIB         = 5,           // Reserved
-    PT_PHDR          = 6,           // Entry for header table itself
-    PT_TLS           = 7,           // Thread-local storage segment
-    PT_NUM           = 8,           // Number of defined types
-    PT_LOOS          = 0x60000000,  // Start of OS-specific
-    PT_GNU_EH_FRAME  = 0x6474e550,  // GCC .eh_frame_hdr segment
-    PT_GNU_STACK     = 0x6474e551,  // Indicates stack executability
-    PT_GNU_RELRO     = 0x6474e552,  // Read-only after relocation
-    // PT_LOSUNW        = 0x6ffffffa,
-    // PT_SUNWBSS       = 0x6ffffffa,  // Sun Specific segment
-    // PT_SUNWSTACK     = 0x6ffffffb,  // Stack segment
-    // PT_HISUNW        = 0x6fffffff,
-    // PT_HIOS          = 0x6fffffff,  // End of OS-specific
-    // PT_LOPROC        = 0x70000000,  // Start of processor-specific
-    // PT_HIPROC        = 0x7fffffff,  // End of processor-specific
-    PT_UNKNOWN      = 0xffffffff,   // self-added
-}
-    
-impl From<u32> for SegmentType {
-    fn from(p_type: u32) -> Self {
-        match p_type {
-            0          => SegmentType::PT_NULL,
-            1          => SegmentType::PT_LOAD,
-            2          => SegmentType::PT_DYNAMIC,
-            3          => SegmentType::PT_INTERP,
-            4          => SegmentType::PT_NOTE,
-            5          => SegmentType::PT_SHLIB,
-            6          => SegmentType::PT_PHDR,
-            7          => SegmentType::PT_TLS,
-            8          => SegmentType::PT_NUM,
-            0x60000000 => SegmentType::PT_LOOS,
-            0x6474e550 => SegmentType::PT_GNU_EH_FRAME,
-            0x6474e551 => SegmentType::PT_GNU_STACK,
-            0x6474e552 => SegmentType::PT_GNU_RELRO,
-            _ => SegmentType::PT_UNKNOWN,
-        }
-    }
-}
 
 pub struct Parser {
-    binbuf : BinBuf,
-    ehdr   : Elf64Ehdr,
-    phdrs  : Vec<Elf64Phdr>,
-    shdrs  : Vec<Elf64Shdr>,
+    binbuf     : BinBuf,
+    ehdr       : Elf64Ehdr,
+    segments   : Segments,
+    sections   : Sections,
     dynsymtabs : Vec<DynSymTab>,
 }
 impl Parser {
-    fn get_sec_name(&self, offset : u32) -> String {
-        // get section name by sh_name in shdr
-        let shstrtab = &self.shdrs[self.ehdr.e_shstrndx as usize];
 
-        // println!("[DBG] shstrtab at 0x{:x}", shstrtab.sh_offset);
-        let offset = offset as usize + shstrtab.sh_offset as usize;
-        let mut s = String::new();
 
-        for c in &self.binbuf.buf[offset..] {
-            if *c == '\x00' as u8 {
-                break;
-            }
-            s.push(*c as char);
-        }
-
-        s
-    }
-    pub fn show_shdrs(&self) -> &Self {
-
-        // TODO: clearify sh_addr
-        
-        print!("{:>4}", "Nr".red());
-        print!("{:>19}", "Name".blue());
-        print!("{:>19}", "Addr".green());
-        print!("{:>19}", "Offset".yellow());
-        print!("{:>19}", "Size".cyan());
-        println!();
-
-        for (i, shdr) in self.shdrs.iter().enumerate() {
-            let sec_name = self.get_sec_name(shdr.sh_name);
-
-            let mut fields = Vec::new();
-            fields.push(format!("[{:<2}]", i));
-            fields.push(format!("{:<018}", sec_name.blue()));
-            fields.push(format!("{:<018x}", shdr.sh_addr));
-            fields.push(format!("{:<018x}", shdr.sh_offset));
-            fields.push(format!("{:<018x}", shdr.sh_size));
-
-            println!("{}", fields.join(" "));
-
-        }
-        self
-    }
-    fn get_seg_type_str(&self, p_type: u32) -> &'static str {
-        // get segment type str
-
-        match SegmentType::from(p_type) {
-            SegmentType::PT_NULL          => "NULL",
-            SegmentType::PT_LOAD          => "LOAD",
-            SegmentType::PT_DYNAMIC       => "DYNAMIC",
-            SegmentType::PT_INTERP        => "INTEPR",
-            SegmentType::PT_NOTE          => "NOTE",
-            SegmentType::PT_SHLIB         => "SHLIB",
-            SegmentType::PT_PHDR          => "PHDR",
-            SegmentType::PT_TLS           => "TLS",
-            SegmentType::PT_NUM           => "NUM",
-            SegmentType::PT_LOOS          => "LOOS",
-            SegmentType::PT_GNU_EH_FRAME  => "GNU_EH_FRAME",
-            SegmentType::PT_GNU_STACK     => "GNU_STACK",
-            SegmentType::PT_GNU_RELRO     => "GNU_RELRO",
-            SegmentType::PT_UNKNOWN       => "UNKNOWN",
-            _ => panic!("unknown type"),
-        }
-    }
-    pub fn show_phdrs(&self) -> &Self {
-
-        print!("{:>18}", "Type".red());
-        print!("{:>19}", "Offset".blue());
-        print!("{:>19}", "VirtAddr".green());
-        print!("{:>19}", "FileSize".yellow());
-        print!("{:>19}", "MemSize".cyan());
-        println!();
-
-        // TODO: add sections here
-        for (_, phdr) in self.phdrs.iter().enumerate() {
-            let mut fields = Vec::new();
-            fields.push(format!("{:<018}", self.get_seg_type_str(phdr.p_type)));
-            fields.push(format!("{:<018x}", phdr.p_offset));
-            fields.push(format!("{:<018x}", phdr.p_vaddr));
-            fields.push(format!("{:<018x}", phdr.p_filesz));
-            fields.push(format!("{:<018x}", phdr.p_memsz));
-
-            println!("{}", fields.join(" "));
-        }
-        self
-    }
 }
 /*
 遍历ELF文件中所有的PHDR，找到类型为PT_LOAD（表示可加载的段）的PHDR。
@@ -165,22 +32,41 @@ impl Parser {
  */
 
 impl Parser {
+
+    pub fn show_sections(&self) -> &Self {
+        self.sections.show_shdrs();
+        self
+    }
+    pub fn show_segments(&self) -> &Self {
+        self.segments.show_phdrs();
+        self
+    }
+
+    pub fn show_layout(&self) -> &Self {
+
+        for seg in &self.segments {
+            println!("{} {}-{}", seg.name, seg.phdr.p_offset, seg.phdr.p_offset + seg.phdr.p_filesz);
+        }
+
+        self
+    }
     
     fn get_name(&self, shdr : &Elf64Shdr) -> String {
         // get name of given shdr
         let shstridx = self.ehdr.e_shstrndx as usize;
         let offset = shdr.sh_name;
-        let i = self.shdrs[shstridx].sh_offset + offset as u64;
+        let i = self.sections[shstridx].shdr.sh_offset + offset as u64;
 
         return self.binbuf.idx_to_string(i as usize);
     }
-    fn find_section(&self, sname : &str ) -> Option<&Elf64Shdr>{
+    fn find_section(&self, sname : &str ) -> Option<&Section>{
         // find section by section name(e.g : .dynsym)
 
-        for shdr in &self.shdrs {
-            let s = self.get_name(shdr);
+        // NOTE: consider remove shdrs??? replace it with section
+        for section in &self.sections.secs {
+            let s = self.get_name(&section.shdr);
             if s == sname {
-                return Some(shdr);
+                return Some(section);
             }
         }
         return None;
@@ -219,11 +105,21 @@ impl Parser {
             shdrs.push(shdr);
         }
 
+    
+        // 1. find section header string index 
+        // 2. get offset of shstrtab in binary
+        let shstridx = ehdr.e_shstrndx as usize;
+        let offset = shdrs[shstridx].sh_offset as usize;
+        let end = (shdrs[shstridx].sh_offset + shdrs[shstridx].sh_size) as usize;
+
+        let segments = Segments::new(phdrs);
+        let sections = Sections::new(shdrs, &binbuf.buf[offset..end], shstridx);
+
         Parser {  
             binbuf,
             ehdr,
-            phdrs,
-            shdrs,
+            segments ,
+            sections ,
             dynsymtabs : vec![]
         }
     }
@@ -235,12 +131,12 @@ mod tests {
     // #[test]
     fn test_print_shdr() {
         let parser = Parser::new("/bin/ls");
-        parser.show_shdrs();
+        parser.sections.show_shdrs();
     }
     // #[test]
     fn test_print_phdr () {
         let parser = Parser::new("/bin/ls");
-        parser.show_phdrs();
+        parser.segments.show_phdrs();
     }
     #[test]
     fn test_get_name() {
@@ -251,12 +147,12 @@ mod tests {
         [3 ] .note.gnu.build-id 000000000000400358 000000000000000358 000000000000000024
          */
         let parser = Parser::new("/bin/ls");
-        let s = parser.get_name(&parser.shdrs[1]);
+        let s = parser.get_name(&parser.sections[1].shdr);
         assert_eq!(s, ".interp");
 
         let sec = parser.find_section(".note.gnu.property").unwrap();
-        assert_eq!(parser.shdrs[2].sh_addr, sec.sh_addr);
-        assert_eq!(parser.shdrs[2].sh_name, sec.sh_name);
-        assert_eq!(parser.shdrs[2].sh_offset, sec.sh_offset);
+        assert_eq!(parser.sections[2].shdr.sh_addr, sec.shdr.sh_addr);
+        assert_eq!(parser.sections[2].shdr.sh_name, sec.shdr.sh_name);
+        assert_eq!(parser.sections[2].shdr.sh_offset, sec.shdr.sh_offset);
     }
 }
