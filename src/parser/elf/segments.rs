@@ -103,30 +103,7 @@ impl Segments {
             pos : 0,
         }
     }
-    // pub fn iter_segments(&self) -> &Vec<Elf64Phdr> {
-    //     &self.phdrs
-    // }
-    // pub fn get_seg_type_str(&self, p_type: u32) -> &'static str {
-    //     // get segment type str
 
-    //     match SegmentType::from(p_type) {
-    //         SegmentType::PT_NULL          => "NULL",
-    //         SegmentType::PT_LOAD          => "LOAD",
-    //         SegmentType::PT_DYNAMIC       => "DYNAMIC",
-    //         SegmentType::PT_INTERP        => "INTEPR",
-    //         SegmentType::PT_NOTE          => "NOTE",
-    //         SegmentType::PT_SHLIB         => "SHLIB",
-    //         SegmentType::PT_PHDR          => "PHDR",
-    //         SegmentType::PT_TLS           => "TLS",
-    //         SegmentType::PT_NUM           => "NUM",
-    //         SegmentType::PT_LOOS          => "LOOS",
-    //         SegmentType::PT_GNU_EH_FRAME  => "GNU_EH_FRAME",
-    //         SegmentType::PT_GNU_STACK     => "GNU_STACK",
-    //         SegmentType::PT_GNU_RELRO     => "GNU_RELRO",
-    //         SegmentType::PT_UNKNOWN       => "UNKNOWN",
-    //         _ => panic!("unknown type"),
-    //     }
-    // }
     pub fn show_phdrs(&self) -> &Self {
 
         print!("{:>18}", "Type".red());
@@ -159,18 +136,6 @@ impl std::ops::Index<usize> for Segments {
         &self.segs[index]
     }
 }
-
-
-// impl IntoIterator for &Segments {
-
-//     type Item = Segment;
-
-//     type IntoIter = std::vec::IntoIter<Segment>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         self.segs.into_iter()
-//     }
-// }
 
 impl<'a> Iterator for &'a Segments {
     type Item = &'a Segment;
