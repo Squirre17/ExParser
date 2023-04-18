@@ -149,8 +149,8 @@ impl Parser {
         let dynsym_section = sections.get_section(".dynsym").unwrap();
         let mut offset = dynsym_section.shdr.sh_offset as usize;
 
-        let dynsym_size : usize = mem::size_of::<Elf64Sym>();
-        let num_of_sym = dynsym_section.shdr.sh_size / dynsym_size as u64;
+        let dynsym_size : u64 = mem::size_of::<Elf64Sym>() as u64;
+        let num_of_sym = dynsym_section.shdr.sh_size / dynsym_size;
 
         let sym_section = sections.get_section(".dynstr").unwrap();
         let sym_start_offset = sym_section.shdr.sh_addr as usize;
