@@ -127,3 +127,16 @@ impl<'a> Iterator for &'a Sections {
         self.secs.iter().next()
     }
 }
+
+impl<'a> std::iter::IntoIterator for &'a mut Sections {
+
+    type Item = &'a mut Section;
+    type IntoIter = std::slice::IterMut<'a, Section>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.secs.iter_mut()
+    }
+}
+
+mod test {
+}

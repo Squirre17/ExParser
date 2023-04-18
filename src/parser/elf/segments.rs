@@ -87,6 +87,7 @@ pub struct Segment {
 }
 
 impl Segments {
+
     pub fn new(phdrs : Vec<Elf64Phdr>) -> Self{
 
         let mut segs = vec![];
@@ -126,6 +127,9 @@ impl Segments {
         }
         self
     }
+    pub fn len(&self) -> usize {
+        return self.segs.len();
+    }
 }
 
 impl std::ops::Index<usize> for Segments {
@@ -143,4 +147,17 @@ impl<'a> Iterator for &'a Segments {
     fn next(&mut self) -> Option<Self::Item> {
         self.segs.iter().next()
     }
+}
+
+impl<'a> std::iter::IntoIterator for &'a mut Segments {
+
+    type Item = &'a mut Segment;
+    type IntoIter = std::slice::IterMut<'a, Segment>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.segs.iter_mut()
+    }
+}
+
+mod test {
 }

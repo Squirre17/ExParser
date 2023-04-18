@@ -11,6 +11,7 @@ use crate::parser::elf::segments::Segments;
 use crate::parser::elf::segments::Segment;
 use crate::parser::elf::sections::Sections;
 use crate::parser::elf::sections::Section;
+use std::borrow::BorrowMut;
 use std::mem;
 
 pub struct Parser {
@@ -37,6 +38,7 @@ impl Parser {
         self.sections.show_shdrs();
         self
     }
+
     pub fn show_segments(&self) -> &Self {
         self.segments.show_phdrs();
         self
@@ -80,6 +82,7 @@ impl Parser {
 
         return self.binbuf.idx_to_string(i as usize);
     }
+
     fn find_section(&self, sname : &str ) -> Option<&Section>{
         // find section by section name(e.g : .dynsym)
 
@@ -146,6 +149,82 @@ impl Parser {
     }
     pub fn writeback(&self, path : &String) {
         unimplemented!()
+    }
+    pub fn add_new_section(&mut self, section : Section) -> &Self {
+        /* 
+         1. adjust ElfXX_Ehdr->e_shoff
+         2. adjust all section beyond 0x1000
+            - file offset
+            - vir addr
+         3. adjust all segments beyond 0x1000
+            - file offset
+            - vir addr
+            - phy addr
+         */
+         
+        let shift = 0x1000;
+        
+        let phdr_start_offset = self.ehdr.e_phoff;
+        let phdr_size = self.ehdr.e_phnum as u64;
+        
+        /*
+        |------------------|
+        |    ELF Header    |
+        |------------------|
+        | Program Header 1 |
+        |------------------|
+        | Program Header 2 |--------------| e.g. .intepret
+        |------------------|              |
+        |     ...          |              |
+        |------------------|              |
+        | Program Header n |              |
+        |------------------| <<- from     |
+        |                  |              |
+        |      shift       | <------------|
+        |                  |
+        |------------------| <<- 0x1000 + from
+        |     Section 1    |
+        |------------------|
+        |     Section 2    |
+        |------------------|
+        |        ...       |
+        |------------------|
+        |     Section m    |
+        |------------------|
+        | Section Header 1 |
+        |------------------|
+        | Section Header 2 |
+        |------------------|
+        |        ...       |
+        |------------------|
+        | Section Header k |
+        |------------------|
+         */
+        let from = phdr_start_offset + phdr_size * self.segments.len() as u64;
+
+        self.ehdr.e_shoff += shift;
+
+        for seg in self.segments.borrow_mut() {
+
+            if seg.phdr.p_offset >= from {
+
+                // TODO: maybe some segments not need shift ?
+                
+                seg.phdr.p_filesz += shift;
+                seg.phdr.p_vaddr  += shift;
+                seg.phdr.p_vaddr  += shift;
+                
+            }
+        }
+        for sec in self.sections.borrow_mut() {
+
+        }
+        dbg!(self.segments.len());
+
+
+
+        unimplemented!();
+        self
     }
 }
 
