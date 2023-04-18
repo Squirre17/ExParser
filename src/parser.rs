@@ -167,7 +167,7 @@ impl Parser {
                 str : string
             });
         }
-        // dbg!(&dynsyms);
+        dbg!(&dynsyms);
 
         Parser {  
             binbuf,
@@ -260,6 +260,12 @@ impl Parser {
                 } 
 
                 sec.shdr.sh_offset += shift;
+            }
+        }
+        for dynsym in &mut self.dynsymtabs.tables {
+            // st_value is an address of value
+            if dynsym.sym.st_value >= from {
+                dynsym.sym.st_value += shift;
             }
         }
         dbg!(self.segments.len());

@@ -243,9 +243,9 @@ pub struct Elf64Sym
     pub st_name  : Elf64Word,		/* Symbol name (string tbl index) */
         st_info  : u8,      		/* Symbol type and binding */
         st_other : u8,		        /* Symbol visibility */
-        st_shndx : Elf64Section,	/* Section index */
-        st_value : Elf64Addr,		/* Symbol value */
-        st_size  : Elf64Xword,		/* Symbol size */
+    pub st_shndx : Elf64Section,	/* Section index */
+    pub st_value : Elf64Addr,		/* Symbol value */
+    pub st_size  : Elf64Xword,		/* Symbol size */
 }
 
 impl Elf64Sym {

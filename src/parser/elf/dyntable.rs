@@ -15,7 +15,7 @@ impl DynSymTab {
 }
 
 pub struct DynSymTables {
-    tables : Vec<DynSymTab>,
+    pub tables : Vec<DynSymTab>,
 }
 
 impl DynSymTables {
