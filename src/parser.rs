@@ -8,6 +8,8 @@ use crate::parser::elf::elf_struct::Elf64Shdr;
 use crate::parser::elf::elf_struct::Elf64Sym;
 use crate::parser::elf::dyntable::DynSymTab;
 use crate::parser::elf::dyntable::DynSymTables;
+use crate::parser::elf::symtable::SymTables;
+use crate::parser::elf::symtable::Symbol;
 use crate::parser::elf::segments::Segments;
 use crate::parser::elf::segments::Segment;
 use crate::parser::elf::sections::Sections;
@@ -16,6 +18,7 @@ use std::borrow::BorrowMut;
 use std::mem;
 
 use self::elf::dyntable;
+use self::elf::symtable;
 
 pub struct Parser {
     binbuf     : BinBuf,
@@ -23,6 +26,7 @@ pub struct Parser {
     segments   : Segments,
     sections   : Sections,
     dynsymtabs : DynSymTables,
+    symtables   : Option<SymTables>,
 }
 impl Parser {
 
@@ -47,6 +51,7 @@ impl Parser {
         self
     }
 
+    // NOTE: debug info and symbol will not be loaded, i.e. not display in segment scope
     pub fn show_layout(&self) -> &Self {
 
         for seg in &self.segments.segs {
@@ -168,12 +173,48 @@ impl Parser {
             });
         }
 
+        /* parse symbol (if exist) */
+        let symtables;
+
+        if let Some(sym_section) = sections.get_section(".symtab"){
+
+            let mut symbols = vec![];
+            
+            let mut offset = sym_section.shdr.sh_offset as usize;
+
+            let sym_size : u64 = mem::size_of::<Elf64Sym>() as u64;
+            let num_of_sym = sym_section.shdr.sh_size / sym_size;
+    
+            let sym_str_section = sections.get_section(".strtab").unwrap();
+            let sym_start_offset = sym_str_section.shdr.sh_offset as usize;
+
+            for _ in 0..num_of_sym {
+                let sym = Elf64Sym::new(binbuf.buf[offset..].as_ref());
+                offset += mem::size_of::<Elf64Sym>();
+    
+                // NOTE: sym.st_name is offset in strtab here(maybe make it more human readable?)
+                let string = binbuf.idx_to_string(sym.st_name as usize + sym_start_offset);
+                
+                symbols.push(Symbol{
+                    sym,
+                    str : string
+                });
+            }
+            
+            symtables = Some(SymTables::new(symbols));
+
+        } else {
+            symtables = None;
+        }
+        
+
         Parser {  
             binbuf,
             ehdr,
             segments ,
             sections ,
-            dynsymtabs : DynSymTables::new( dynsyms)
+            dynsymtabs : DynSymTables::new( dynsyms),
+            symtables
         }
     }
     pub fn writeback(&self, path : &String) {
