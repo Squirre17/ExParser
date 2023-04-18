@@ -231,7 +231,6 @@ impl Parser {
         |------------------|
          */
         let from = phdr_start_offset + phdr_size * self.segments.len() as u64;
-        dbg!(from);
 
         self.ehdr.e_shoff += shift;
 
