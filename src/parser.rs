@@ -167,7 +167,6 @@ impl Parser {
                 str : string
             });
         }
-        dbg!(&dynsyms);
 
         Parser {  
             binbuf,
