@@ -108,8 +108,28 @@ impl Sections {
         }
         self
     }
+
     pub fn len(&self) -> usize {
         self.secs.len()
+    }
+    //TODO: let it to iter
+    pub fn get_section_offset(&self, name : &str) -> Option<usize> {
+        // get section's offset by name
+        for (k, v) in &self.offset_to_secname {
+            if v.as_str() == name {
+                return Some(*k);
+            }
+        }
+        None
+    }
+    pub fn get_section(&self, name : &str) -> Option<&Section> {
+        // get section's ref by name
+        for sec in &self.secs {
+            if sec.name.as_str().trim_end_matches('\x00') == name {
+                return Some(sec);
+            }
+        }
+        None
     }
 }
 

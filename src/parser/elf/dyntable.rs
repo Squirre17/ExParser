@@ -1,6 +1,7 @@
 use crate::parser::elf::elf_struct::Elf64Sym;
 
 
+#[derive(Debug)]
 pub struct DynSymTab {
     // wrapper of dynsym and dynstr
     pub sym : Elf64Sym,

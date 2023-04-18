@@ -15,6 +15,8 @@ use crate::parser::elf::sections::Section;
 use std::borrow::BorrowMut;
 use std::mem;
 
+use self::elf::dyntable;
+
 pub struct Parser {
     binbuf     : BinBuf,
     ehdr       : Elf64Ehdr,
@@ -58,7 +60,6 @@ impl Parser {
             println!("{:<022} {}", seg.name.red(), start.yellow());
             
             for sec in &self.sections.secs {
-                // dbg!(&sec);
 
                 let sec_start = sec.shdr.sh_offset;
                 let sec_end = sec.shdr.sh_offset + sec.shdr.sh_size;
@@ -112,6 +113,7 @@ impl Parser {
         let idx = 0x0;
         let ehdr = Elf64Ehdr::new(binbuf.buf[idx..].as_ref());
 
+        /* parse segments */
         let mut idx = ehdr.e_phoff as usize;
         let mut phdrs = vec![];
 
@@ -121,6 +123,7 @@ impl Parser {
             phdrs.push(phdr);
         }
 
+        /* parse sections */
         let mut idx = ehdr.e_shoff as usize;
         let mut shdrs = vec![];
 
@@ -130,22 +133,48 @@ impl Parser {
             shdrs.push(shdr);
         }
 
-    
+        
         // 1. find section header string index 
         // 2. get offset of shstrtab in binary
         let shstridx = ehdr.e_shstrndx as usize;
         let offset = shdrs[shstridx].sh_offset as usize;
         let end = (shdrs[shstridx].sh_offset + shdrs[shstridx].sh_size) as usize;
-
+        
         let segments = Segments::new(phdrs);
         let sections = Sections::new(shdrs, &binbuf.buf[offset..end], shstridx);
+        
+        /* parse .dynsym */
+        let mut dynsyms = vec![];
+
+        let dynsym_section = sections.get_section(".dynsym").unwrap();
+        let mut offset = dynsym_section.shdr.sh_offset as usize;
+
+        let dynsym_size : usize = mem::size_of::<Elf64Sym>();
+        let num_of_sym = dynsym_section.shdr.sh_size / dynsym_size as u64;
+
+        let sym_section = sections.get_section(".dynstr").unwrap();
+        let sym_start_offset = sym_section.shdr.sh_addr as usize;
+
+        for _ in 0..num_of_sym {
+            let sym = Elf64Sym::new(binbuf.buf[offset..].as_ref());
+            offset += mem::size_of::<Elf64Sym>();
+
+            // NOTE: sym.st_name is offset in strtab here(maybe make it more human readable?)
+            let string = binbuf.idx_to_string(sym.st_name as usize + sym_start_offset);
+            
+            dynsyms.push(DynSymTab{
+                sym,
+                str : string
+            });
+        }
+        // dbg!(&dynsyms);
 
         Parser {  
             binbuf,
             ehdr,
             segments ,
             sections ,
-            dynsymtabs : DynSymTables::new( vec![])
+            dynsymtabs : DynSymTables::new( dynsyms)
         }
     }
     pub fn writeback(&self, path : &String) {

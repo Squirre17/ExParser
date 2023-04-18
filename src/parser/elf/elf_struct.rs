@@ -237,6 +237,7 @@ impl fmt::Debug for Elf64Shdr {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct Elf64Sym
 {
     pub st_name  : Elf64Word,		/* Symbol name (string tbl index) */
