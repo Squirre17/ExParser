@@ -153,7 +153,7 @@ impl Parser {
         let num_of_sym = dynsym_section.shdr.sh_size / dynsym_size;
 
         let sym_section = sections.get_section(".dynstr").unwrap();
-        let sym_start_offset = sym_section.shdr.sh_addr as usize;
+        let sym_start_offset = sym_section.shdr.sh_offset as usize;
 
         for _ in 0..num_of_sym {
             let sym = Elf64Sym::new(binbuf.buf[offset..].as_ref());
@@ -189,6 +189,8 @@ impl Parser {
             - file offset
             - vir addr
             - phy addr
+         4. adjust dynsym
+         5. adjust symbol
          */
          
         let shift = 0x1000;
@@ -262,10 +264,11 @@ impl Parser {
             }
         }
         for dynsym in &mut self.dynsymtabs.tables {
-            // st_value is an address of value
+            // st_value is an virtual address of value
             if dynsym.sym.st_value >= from {
                 dynsym.sym.st_value += shift;
             }
+            // TODO: fini_array
         }
         dbg!(self.segments.len());
         dbg!(self.sections.len());
@@ -282,6 +285,7 @@ mod tests {
     fn test_print_shdr() {
         let parser = Parser::new("/bin/ls");
         parser.sections.show_shdrs();
+        let parser = Parser::new("test/test");
     }
     #[test]
     fn test_print_phdr () {

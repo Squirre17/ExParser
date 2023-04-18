@@ -159,7 +159,10 @@ impl Elf64Phdr {
     }
 }
 
-/* Elf Section Header */
+/* Elf Section Header 
+    NOTE: if pie, sh_addr is most of the same as sh_offset.
+          but sh_addr repr virtual address in memory and sh_offset repr offset in file when pie not enabled
+*/
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Elf64Shdr
