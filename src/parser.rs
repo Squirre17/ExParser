@@ -14,6 +14,8 @@ use crate::parser::elf::segments::Segments;
 use crate::parser::elf::segments::Segment;
 use crate::parser::elf::sections::Sections;
 use crate::parser::elf::sections::Section;
+use crate::parser::elf::relocations::Relocations;
+use crate::parser::elf::relocations::Relocation;
 use std::borrow::BorrowMut;
 use std::mem;
 
@@ -26,7 +28,8 @@ pub struct Parser {
     segments   : Segments,
     sections   : Sections,
     dynsymtabs : DynSymTables,
-    symtables   : Option<SymTables>,
+    symtables  : Option<SymTables>,
+    relocs     : Option<Relocations>
 }
 impl Parser {
 
@@ -112,6 +115,7 @@ impl Parser {
     }
 
     pub fn new(filename : &str) -> Parser {
+        // TODO: split it to diff parts
 
         let binbuf = BinBuf::new(filename);
         
@@ -195,18 +199,51 @@ impl Parser {
                 // NOTE: sym.st_name is offset in strtab here(maybe make it more human readable?)
                 let string = binbuf.idx_to_string(sym.st_name as usize + sym_start_offset);
                 
-                symbols.push(Symbol{
+                symbols.push(Symbol::new(
                     sym,
-                    str : string
-                });
+                    string,
+                ));
             }
-            
+
             symtables = Some(SymTables::new(symbols));
 
         } else {
             symtables = None;
         }
         
+        /* parse got(if dynamic) TODO: test statically */
+
+        // TODO: maybe have .got(contain global variable)
+        let relocs;
+
+        if let Some(rel_section) = sections.get_section(".got.plt") {
+
+            let mut _relocs = vec![];
+
+            let mut start = rel_section.shdr.sh_offset as usize;
+            let end = start + rel_section.shdr.sh_size as usize;
+            let sz = std::mem::size_of::<usize>();
+
+            while start < end {
+                
+                let addr : [u8; 8] = binbuf.get_content(start, sz)
+                                           .try_into()
+                                           .unwrap();
+            
+                let addr = u64::from_le_bytes(addr);
+
+                _relocs.push(Relocation::new(
+                    addr, start
+                ));
+
+                start += sz
+            }
+
+            relocs = Some(Relocations::new(_relocs));
+        }else {
+            relocs = None
+        }
+
 
         Parser {  
             binbuf,
@@ -214,7 +251,8 @@ impl Parser {
             segments ,
             sections ,
             dynsymtabs : DynSymTables::new( dynsyms),
-            symtables
+            symtables,
+            relocs
         }
     }
     pub fn writeback(&self, path : &String) {
@@ -232,6 +270,7 @@ impl Parser {
             - phy addr
          4. adjust dynsym
          5. adjust symbol
+         6. adjust relocate
          */
          
         let shift = 0x1000;
@@ -305,16 +344,27 @@ impl Parser {
             }
         }
         for dynsym in &mut self.dynsymtabs.tables {
-            // st_value is an virtual address of value
+            // st_value is an virtual address of value in memory
             if dynsym.sym.st_value >= from {
                 dynsym.sym.st_value += shift;
             }
             // TODO: fini_array
         }
+
+        // NOTE: need rewrite here
+        if let Some(symtable) = &mut self.symtables {
+
+            for sym in &mut symtable.syms {
+                if sym.sym.st_value >= from {
+                    sym.sym.st_value += shift;
+                }
+            }
+        }
+
+        //
         dbg!(self.segments.len());
         dbg!(self.sections.len());
 
-        unimplemented!();
         self
     }
 }

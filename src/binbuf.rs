@@ -1,5 +1,6 @@
 use std::io::prelude::*;
 use std::fs::File;
+use std::process::id;
 
 pub struct BinBuf {
     pub buf  : Vec<u8>,
@@ -43,5 +44,8 @@ impl BinBuf {
             s.push(*c as char);
         }
         s
+    }
+    pub fn get_content(&self, idx : usize, sz : usize) -> Vec<u8> {
+        self.buf[idx..idx+sz].to_vec()
     }
 }
