@@ -6,7 +6,8 @@ use crate::parser::elf::elf_struct::Elf64Ehdr;
 use crate::parser::elf::elf_struct::Elf64Phdr;
 use crate::parser::elf::elf_struct::Elf64Shdr;
 use crate::parser::elf::elf_struct::Elf64Sym;
-use crate::parser::elf::elf_struct::DynSymTab;
+use crate::parser::elf::dyntable::DynSymTab;
+use crate::parser::elf::dyntable::DynSymTables;
 use crate::parser::elf::segments::Segments;
 use crate::parser::elf::segments::Segment;
 use crate::parser::elf::sections::Sections;
@@ -19,7 +20,7 @@ pub struct Parser {
     ehdr       : Elf64Ehdr,
     segments   : Segments,
     sections   : Sections,
-    dynsymtabs : Vec<DynSymTab>,
+    dynsymtabs : DynSymTables,
 }
 impl Parser {
 
@@ -144,7 +145,7 @@ impl Parser {
             ehdr,
             segments ,
             sections ,
-            dynsymtabs : vec![]
+            dynsymtabs : DynSymTables::new( vec![])
         }
     }
     pub fn writeback(&self, path : &String) {
@@ -201,6 +202,7 @@ impl Parser {
         |------------------|
          */
         let from = phdr_start_offset + phdr_size * self.segments.len() as u64;
+        dbg!(from);
 
         self.ehdr.e_shoff += shift;
 
@@ -217,11 +219,23 @@ impl Parser {
             }
         }
         for sec in self.sections.borrow_mut() {
+            // TODO: frame 
+            if sec.shdr.sh_offset >= from {
 
+                /* for something like following:
+
+                                 Name               Addr             Offset               Size
+                .shstrtab             000000000000000000 00000000000002229c 00000000000000011d
+                 */
+                if sec.shdr.sh_addr > 0 {
+                    sec.shdr.sh_addr += shift;
+                } 
+
+                sec.shdr.sh_offset += shift;
+            }
         }
         dbg!(self.segments.len());
-
-
+        dbg!(self.sections.len());
 
         unimplemented!();
         self
@@ -231,12 +245,12 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // #[test]
+    #[test]
     fn test_print_shdr() {
         let parser = Parser::new("/bin/ls");
         parser.sections.show_shdrs();
     }
-    // #[test]
+    #[test]
     fn test_print_phdr () {
         let parser = Parser::new("/bin/ls");
         parser.segments.show_phdrs();

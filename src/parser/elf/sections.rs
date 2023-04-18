@@ -108,6 +108,9 @@ impl Sections {
         }
         self
     }
+    pub fn len(&self) -> usize {
+        self.secs.len()
+    }
 }
 
 

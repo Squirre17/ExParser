@@ -286,13 +286,3 @@ impl fmt::Display for Elf64Sym {
     }
 }
 
-pub struct DynSymTab {
-    // wrapper of dynsym and dynstr
-    pub sym : Elf64Sym,
-    pub str : String,
-}
-impl DynSymTab {
-    pub fn new(sym : Elf64Sym, str : String) -> Self {
-        DynSymTab { sym, str }
-    }
-}
