@@ -256,6 +256,7 @@ impl Parser {
         }
     }
     pub fn writeback(&self, path : &String) {
+
         unimplemented!()
     }
     pub fn add_new_section(&mut self, section : Section) -> &Self {
@@ -361,7 +362,9 @@ impl Parser {
             }
         }
 
-        //
+        self.ehdr.e_entry += shift;
+
+        // TODO: GOT
         dbg!(self.segments.len());
         dbg!(self.sections.len());
 
