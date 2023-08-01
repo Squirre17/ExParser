@@ -97,7 +97,7 @@ impl Elf64Ehdr {
             ptr::copy_nonoverlapping(l.as_ptr(), &mut header as *mut _ as *mut u8, sz);
         }
 
-        dbg!(&header);
+        // dbg!(&header);
         header
     }
 }

@@ -31,10 +31,7 @@ pub struct Parser {
     symtables  : Option<SymTables>,
     relocs     : Option<Relocations>
 }
-impl Parser {
 
-
-}
 /*
 遍历ELF文件中所有的PHDR，找到类型为PT_LOAD（表示可加载的段）的PHDR。
 对于每个类型为PT_LOAD的PHDR，记录下其虚拟地址（p_vaddr）、文件偏移量（p_offset）、内存大小（p_memsz）和文件大小（p_filesz）等信息。这些信息可以用来确定该段在文件中的位置以及在内存中的位置。
@@ -43,6 +40,10 @@ impl Parser {
  */
 
 impl Parser {
+    pub fn show_header(&self) -> &Self {
+        println!("{:?}", self.ehdr);
+        self
+    }
 
     pub fn show_sections(&self) -> &Self {
         self.sections.show_shdrs();

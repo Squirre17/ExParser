@@ -18,3 +18,11 @@ a simple Executable Parser for understanding file format.
 [29] .shstrtab             000000000000000000 00000000000002229c 00000000000000011d
 ```
 shstrtab with no address will notice in layout
+
+# effect
+
+![Alt text](assets/image.png)
+
+![Alt text](assets/image2.png)
+
+![Alt text](assets/image3.png)
